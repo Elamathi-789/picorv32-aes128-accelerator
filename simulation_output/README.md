@@ -22,3 +22,9 @@ This screenshot shows the TCP console output captured during project testing.
 
 ### Console Output image 5
 ![TCP Console Output 3](tcp_console_output_5.png)
+
+## PicoSoC AES Testbench Waveform
+
+The waveform below illustrates the signals captured during simulation of the PicoSoC AES integration testbench.
+
+![PicoSoC AES Testbench Waveform](picosoc_aes_tb_waveform.png)
