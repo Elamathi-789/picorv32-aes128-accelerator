@@ -9,4 +9,4 @@ This screenshot shows the simulation results for the AES-128 encryption and decr
 
 This screenshot shows the TCP console output captured during project testing.
 
-![TCP Console Output](Tcp console.jpeg)
+![TCP Console Output](tcp_console_output.png)
