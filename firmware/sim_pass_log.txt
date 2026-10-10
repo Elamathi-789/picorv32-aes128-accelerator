@@ -1,0 +1,27 @@
+[3750000] FETCH  addr=00100000 data=40000113
+[5030000] FETCH  addr=00100004 data=00000293
+[35070000] UART_DIV written = 432
+----------------------------------------
+RAM[0] result code = a35e0001
+UART text received (decoded independently at 115200 baud):
+
+PicoRV32 AES-128 self-test
+Plaintext  = 00112233445566778899AABBCCDDEEFF
+Key        = 000102030405060708090A0B0C0D0E0F
+Ciphertext = 69C4E0D86A7B0430D8CDB78070B4C55A
+ENC PASS
+Decrypted  = 00112233445566778899AABBCCDDEEFF
+DEC PASS
+RESULT: PASS
+----------------------------------------
+Measured UART bit time = 8680.0 ns (ideal 8680.6 ns) -> 115207 baud, error -0.006 %
+Measured SPI flash SCK = 25.0 MHz (half-period 20.0 ns)
+Cycles=1128303  flash fetches=5094  AES writes=18  AES reads=10  UART chars=252
+CHECK firmware result code ........ PASS
+CHECK UART ciphertext line ...... PASS
+CHECK UART decrypted line ....... PASS
+CHECK UART final RESULT line .... PASS
+CHECK UART framing ............... PASS
+CHECK baud error within 2% ..... PASS
+OVERALL: ALL CHECKS PASS (simulation only)
+/mnt/d/RISCV/aes_firmware/picosoc_firmware_tb_50MHz.v:198: $finish called at 22566430000 (1ps)

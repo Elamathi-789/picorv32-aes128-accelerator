@@ -1,0 +1,78 @@
+
+There are no discarded input sections
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+RAM              0x00000000         0x00000400         xrw
+FLASH            0x00100000         0x00010000         xr
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+LOAD start.o
+LOAD main.o
+LOAD /usr/lib/gcc/riscv64-unknown-elf/14.2.0/rv32im/ilp32/libgcc.a
+
+.text           0x00100000      0x458
+ *(.text.init)
+ .text.init     0x00100000       0x3e start.o
+                0x00100000                _start
+ *(.text*)
+ .text          0x0010003e        0x0 start.o
+ .text          0x0010003e       0x7a main.o
+ .text.startup  0x001000b8      0x2be main.o
+                0x001000b8                main
+ *(.rodata*)
+ *fill*         0x00100376        0x2 
+ .rodata.str1.4
+                0x00100378       0xbe main.o
+                                 0xc2 (size before relaxing)
+ *fill*         0x00100436        0x2 
+ .rodata        0x00100438       0x20 main.o
+
+.rela.dyn       0x00100458        0x0
+ .rela.text.init
+                0x00100458        0x0 start.o
+
+.data           0x00000000        0x0 load address 0x00100458
+                0x00000000                        . = ALIGN (0x4)
+                0x00000000                        _data_start = .
+ *(.sdata*)
+ *(.data*)
+ .data          0x00000000        0x0 start.o
+ .data          0x00000000        0x0 main.o
+                0x00000000                        . = ALIGN (0x4)
+                0x00000000                        _data_end = .
+                0x00100458                        _data_load_start = LOADADDR (.data)
+
+.bss            0x00000000        0x4 load address 0x00100458
+                0x00000000                        . = ALIGN (0x4)
+                0x00000000                        _bss_start = .
+ *(.sbss*)
+ .sbss          0x00000000        0x4 main.o
+                0x00000000                aes_test_result
+ *(.bss*)
+ .bss           0x00000004        0x0 start.o
+ .bss           0x00000004        0x0 main.o
+ *(COMMON)
+                0x00000004                        . = ALIGN (0x4)
+                0x00000004                        _bss_end = .
+                0x00000400                        _stack_top = (ORIGIN (RAM) + LENGTH (RAM))
+OUTPUT(firmware.elf elf32-littleriscv)
+
+.riscv.attributes
+                0x00000000       0x36
+ .riscv.attributes
+                0x00000000       0x34 start.o
+ .riscv.attributes
+                0x00000034       0x36 main.o
+
+.comment        0x00000000       0x18
+ .comment       0x00000000       0x18 main.o
+                                 0x19 (size before relaxing)
+
+.note.GNU-stack
+                0x00000000        0x0
+ .note.GNU-stack
+                0x00000000        0x0 main.o
