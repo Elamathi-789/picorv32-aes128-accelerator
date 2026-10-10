@@ -1,188 +1,208 @@
 # PicoRV32-Based AES-128 Hardware Accelerator for Secure Tactical Communication
 
-## Overview
+**FPGA-Based Cryptographic Acceleration | Embedded Systems | Hardware–Software Co-Design**
 
-This project implements a hardware-accelerated AES-128 encryption and decryption system using the PicoRV32 RISC-V processor on a Boolean FPGA development board featuring the Xilinx Spartan-7 XC7S50 FPGA.
+## 1. Project Overview
 
-The system integrates a software-programmable AES-128 hardware accelerator with the PicoSoC through a Memory-Mapped I/O (MMIO) interface. The processor configures the accelerator, supplies plaintext or ciphertext and a 128-bit key, starts the cryptographic operation, and retrieves the result through memory-mapped registers.
+This project implements an AES-128 hardware accelerator integrated with a PicoRV32-based system-on-chip (SoC), targeting the **Real Digital Boolean Board featuring the AMD/Xilinx Spartan-7 XC7S50 FPGA**.
 
-The project aims to demonstrate how hardware acceleration can improve cryptographic processing for secure communication applications.
+The design combines a RISC-V processor with a memory-mapped AES accelerator to support hardware-assisted cryptographic operations. Instead of performing every AES transformation through processor instructions, the processor configures the accelerator, supplies the plaintext or ciphertext and encryption key, initiates an operation, and reads the result through memory-mapped registers.
 
-## Objectives
+The project explores hardware–software co-design for secure embedded communication, with an emphasis on modular RTL design, processor–accelerator integration, and FPGA implementation.
 
-* Integrate an AES-128 hardware accelerator with a PicoRV32-based SoC.
-* Implement AES encryption and decryption using dedicated hardware.
-* Enable processor-to-accelerator communication through MMIO registers.
-* Support firmware interaction and debugging through UART.
-* Explore FPGA-based cryptographic acceleration for secure tactical communication systems.
+## 2. Project Objectives
 
-## System Architecture
+- Integrate an AES-128 accelerator with a PicoRV32-based SoC.
+- Provide a memory-mapped interface for accelerator control, input data, key loading, status monitoring, and output retrieval.
+- Support encryption and decryption mode selection through the accelerator control interface.
+- Reuse the existing PicoRV32 processor and PicoSoC infrastructure.
+- Develop and organize simulation evidence for functional verification.
+- Prepare the design for FPGA synthesis, implementation, and hardware validation on the target board.
 
-```text
-                 +--------------------------+
-                 |        Host PC            |
-                 | Firmware / UART Terminal  |
-                 +------------+-------------+
-                              |
-                         USB-UART
-                              |
-                 +------------v-------------+
-                 |     Boolean FPGA Board    |
-                 |   Spartan-7 XC7S50 FPGA   |
-                 |                           |
-                 |  +---------------------+  |
-                 |  |       PicoSoC       |  |
-                 |  |                     |  |
-                 |  |   PicoRV32 CPU      |  |
-                 |  |   On-chip RAM       |  |
-                 |  |   UART Peripheral   |  |
-                 |  |   SPI Flash Access  |  |
-                 |  +----------+----------+  |
-                 |             | MMIO        |
-                 |  +----------v----------+  |
-                 |  |   AES MMIO Control  |  |
-                 |  | Control / Status    |  |
-                 |  | Data / Key Registers|  |
-                 |  +----------+----------+  |
-                 |             |             |
-                 |  +----------v----------+  |
-                 |  |   AES-128 Engine    |  |
-                 |  |                     |  |
-                 |  | Key Expansion       |  |
-                 |  | AES Encryption      |  |
-                 |  | AES Decryption      |  |
-                 |  +---------------------+  |
-                 +---------------------------+
-                              |
-                   +----------v----------+
-                   | Encrypted Output    |
-                   | Ciphertext (128-bit) |
-                   +----------------------+
-```
+## 3. System Architecture
 
-*Note: The diagram represents the intended system architecture. Actual firmware boot, FPGA pin assignments, and hardware operation must be verified on the target board.*
+The system consists of the following major components:
 
-## Hardware Platform
+- **PicoRV32 RISC-V CPU:** Executes software instructions and controls accelerator operations.
+- **PicoSoC subsystem:** Provides the processor system and existing peripheral infrastructure.
+- **AES MMIO interface:** Exposes control, status, input, key, and output registers to software.
+- **AES-128 core:** Performs the cryptographic operation using the supplied data and key.
+- **UART interface:** Provides a serial communication path through the existing SoC infrastructure.
+- **FPGA platform:** Targets the Real Digital Boolean Board with a Spartan-7 XC7S50 device.
 
-* **FPGA:** Xilinx Spartan-7 XC7S50
-* **Development board:** Real Digital Boolean Board
-* **Processor:** PicoRV32 RISC-V CPU
-* **Communication interface:** UART
-* **Firmware storage interface:** SPI flash through `spimemio`
-* **Cryptographic accelerator:** AES-128 encryption/decryption engine
+### Architecture Diagram
 
-## Main Components
+Add the system architecture image to `docs/images/architecture.png` and ensure that the filename matches the actual file in your repository.
 
-### 1. PicoRV32 Processor
+![PicoRV32 AES-128 Accelerator Architecture](docs/images/architecture.png)
 
-PicoRV32 is a compact RISC-V processor that executes the firmware and controls the AES accelerator. It initiates cryptographic operations and reads the resulting data from the accelerator.
+### High-Level Operation
 
-### 2. PicoSoC
+1. The PicoRV32 processor executes the control firmware.
+2. Software writes the input block and AES key to the accelerator's memory-mapped registers.
+3. Software configures the operation mode and asserts the start control.
+4. The AES accelerator processes the input data.
+5. Software polls the status register to determine when the operation is complete.
+6. Software reads the resulting 128-bit block from the output registers.
+7. Results may be reported through the UART interface when supported by the firmware.
 
-PicoSoC integrates the processor with on-chip RAM, UART, and SPI flash access. It provides the processor's memory and peripheral interfaces.
+## 4. AES-128 Hardware Accelerator
 
-### 3. AES MMIO Controller
+AES (Advanced Encryption Standard) is a symmetric-key block cipher. AES-128 operates on a **128-bit data block using a 128-bit key**.
 
-The AES MMIO controller connects the processor to the cryptographic engine through memory-mapped registers. The firmware uses these registers to configure an operation, provide input data and key material, initiate processing, and read the result and status.
+The standard AES encryption algorithm includes the following transformations:
 
-### 4. AES-128 Hardware Engine
+- **SubBytes:** Substitutes each state byte using the AES substitution table.
+- **ShiftRows:** Cyclically shifts the rows of the AES state.
+- **MixColumns:** Transforms each state column using arithmetic in the AES finite field.
+- **AddRoundKey:** Combines the state with the round key using bitwise XOR.
+- **Key Expansion:** Derives the round keys from the original 128-bit key.
 
-The AES engine performs encryption and decryption on 128-bit data blocks using a 128-bit key. The dedicated hardware implementation is intended to reduce the processor's workload compared with performing all cryptographic rounds in software.
+AES-128 encryption uses an initial AddRoundKey operation, followed by nine full rounds and a final round without MixColumns.
 
-### 5. UART Interface
+The project integrates the AES core through an RTL interface containing data, key, start, mode, completion, and output signals. The exact internal implementation and supported decryption behavior should be confirmed against the finalized AES RTL and verification results.
 
-UART provides a serial communication path between the FPGA and a host computer. It can be used for firmware interaction, debugging, and displaying test results.
+## 5. Memory-Mapped Register Interface
 
-### 6. SPI Flash Interface
+The accelerator is assigned the base address `0x03000000`.
 
-The `spimemio` module allows PicoSoC to read program instructions from external SPI flash. Successful firmware boot depends on the flash configuration, memory layout, board wiring, and firmware image placement.
+| Register | Address | Description |
+|---|---|---|
+| CONTROL | `0x03000000` | Starts an operation and selects the mode |
+| STATUS | `0x03000004` | Reports operation completion status |
+| DATA_IN0 | `0x03000008` | Input data bits [31:0] |
+| DATA_IN1 | `0x0300000C` | Input data bits [63:32] |
+| DATA_IN2 | `0x03000010` | Input data bits [95:64] |
+| DATA_IN3 | `0x03000014` | Input data bits [127:96] |
+| KEY0 | `0x03000018` | Key bits [31:0] |
+| KEY1 | `0x0300001C` | Key bits [63:32] |
+| KEY2 | `0x03000020` | Key bits [95:64] |
+| KEY3 | `0x03000024` | Key bits [127:96] |
+| DATA_OUT0 | `0x03000028` | Output data bits [31:0] |
+| DATA_OUT1 | `0x0300002C` | Output data bits [63:32] |
+| DATA_OUT2 | `0x03000030` | Output data bits [95:64] |
+| DATA_OUT3 | `0x03000034` | Output data bits [127:96] |
 
-## Memory-Mapped I/O
+The CPU accesses the accelerator through the SoC's internal memory-mapped interface. Firmware must use the register addresses and control/status bit definitions implemented in the RTL.
 
-The AES peripheral is instantiated with the following base address in the current top-level RTL:
+**Note:** The register offsets and data slices above describe the intended register map. Confirm control-bit encodings, status semantics, byte/word ordering, and bus-access behavior against the finalized RTL before using this table as a software specification.
 
-| Parameter     | Address      |
-| ------------- | ------------ |
-| AES MMIO base | `0x03000000` |
+## 6. Target Hardware and Development Tools
 
-The precise register offsets, access permissions, start/done behavior, and data layout must match the implementation in `aes_mmio.v` and the firmware.
+| Item | Description |
+|---|---|
+| FPGA development board | Real Digital Boolean Board |
+| FPGA device | AMD/Xilinx Spartan-7 XC7S50-CSGA324-1 |
+| Processor | PicoRV32 RISC-V CPU |
+| Hardware description | Verilog/SystemVerilog, according to source files |
+| Cryptographic algorithm | AES-128 |
+| Processor–accelerator interface | Memory-mapped I/O |
+| Serial interface | UART through the SoC |
+| FPGA design tools | AMD Vivado Design Suite |
+| Version control | Git and GitHub |
 
-## Expected Operation
+The final implementation must use the verified board clock frequency, correct pin assignments, and appropriate timing constraints for the selected hardware.
 
-1. Build the firmware for the PicoRV32 processor.
-2. Configure the FPGA with the synthesized and implemented bitstream.
-3. Initialize or boot the firmware from the configured memory source.
-4. Send test inputs and a 128-bit key to the accelerator through MMIO registers.
-5. Start the AES encryption or decryption operation.
-6. Wait for the accelerator to signal completion.
-7. Read and verify the 128-bit result.
-8. Use UART to display or capture test results.
-
-## Repository Structure
-
-The following is a suggested organization; adjust it to match the files in your repository.
+## 7. Repository Structure
 
 ```text
-.
+picorv32-aes128-accelerator/
 ├── rtl/
-│   ├── picosoc.v
-│   ├── picorv32.v
-│   ├── simpleuart.v
-│   ├── spimemio.v
 │   ├── picosoc_aes.v
 │   ├── aes_mmio.v
-│   └── aes_v3_enc_dec_top.v
+│   └── ...
 ├── firmware/
-│   ├── main.c
-│   └── [firmware build files]
+│   └── README.md
 ├── constraints/
-│   └── boolean_board.xdc
-├── simulation/
-│   └── [testbenches]
+│   └── picosoc_aes_constraints.xdc
+├── simulation_output/
+│   ├── README.md
+│   └── ...
+├── docs/
+│   ├── images/
+│   │   └── architecture.png
+│   └── ...
 ├── README.md
 └── LICENSE
 ```
 
-## Tools Required
+This is the intended organizational structure. Keep only filenames and folders that actually exist in the repository, and update the tree as the project develops.
 
-* AMD Xilinx Vivado Design Suite
-* A RISC-V-compatible firmware compiler, such as a `riscv32-unknown-elf` toolchain compatible with the selected ISA
-* A serial terminal application
-* Boolean FPGA development board and USB programming connection
+## 8. Verification and Simulation
 
-## Verification and Testing
+Simulation evidence is maintained in the `simulation_output/` directory.
 
-The following tests should be completed before claiming successful hardware operation:
+Relevant evidence may include:
 
-* [ ] RTL elaboration and synthesis complete without errors.
-* [ ] FPGA implementation completes and timing requirements are met.
-* [ ] Clock, UART, reset, and SPI flash pin assignments are verified against official board documentation.
-* [ ] AES encryption results match known-answer test vectors.
-* [ ] AES decryption recovers the original plaintext.
-* [ ] MMIO register accesses work correctly.
-* [ ] Firmware boot from SPI flash is verified, if used.
-* [ ] UART communication is verified on the physical board.
+- AES encryption and decryption simulation results.
+- Testbench waveforms.
+- UART or console output demonstrating software interaction, where available.
+- Additional functional verification screenshots.
 
-## Security Considerations
+Each result should be accompanied by a description of the test conditions, expected behavior, and observed output.
 
-AES-128 is a standardized symmetric block cipher. However, using AES hardware alone does not establish a complete secure communication system.
+**Verification status:** Simulation and hardware-validation claims should be based on the actual test results committed to this repository. Screenshots alone should not be treated as proof of complete functional correctness unless the test inputs and expected outputs are documented.
 
-A deployed system also requires secure key management, appropriate operation modes, message authentication, nonce or IV handling where applicable, and protection against implementation-specific side-channel attacks. Integration with an actual tactical radio or communication link is outside the scope of the currently described FPGA architecture unless implemented separately.
+## 9. Current Development Status
 
-## Project Status
+The project is organized around processor integration, an AES memory-mapped interface, and the AES hardware core.
 
-**Development stage:** FPGA integration and verification.
+| Component | Status |
+|---|---|
+| PicoRV32/PicoSoC integration | Present in the project RTL; integration requires build verification |
+| AES MMIO interface | Defined around base address `0x03000000`; verify against finalized RTL |
+| AES core integration | Connected through start, mode, data, key, done, and output signals |
+| Firmware | Under development; source and build instructions to be added |
+| Simulation evidence | To be documented alongside the actual test results |
+| FPGA synthesis and implementation | To be confirmed from Vivado reports |
+| On-board validation | To be confirmed by hardware testing |
 
-The project RTL includes a PicoSoC wrapper, an AES MMIO interface, and an AES encryption/decryption engine. Synthesis, timing closure, firmware boot, and on-board functional testing should be documented as they are completed.
+This table should be updated before final evaluation to reflect the latest verified state of the project.
 
-## Future Improvements
+## 10. Security Scope and Limitations
 
-* Complete FPGA timing analysis and resource utilization analysis.
-* Automate firmware loading and regression testing.
-* Add authenticated encryption or message authentication.
-* Evaluate latency, throughput, and resource usage against a software-only AES implementation.
-* Integrate with a suitable communication interface for end-to-end secure data transfer.
+This project demonstrates hardware-assisted AES-128 processing in an embedded SoC architecture. It is an educational and engineering prototype, not a complete secure tactical communication system.
 
-## License
+AES encryption alone does not provide all the properties required for secure communication. A deployed system would also require appropriate authenticated encryption or message authentication, key management, secure key storage, protocol design, replay protection, and consideration of physical and side-channel attacks.
 
-Add the license appropriate to your project and the licenses of the third-party components used. Retain the original PicoRV32 and PicoSoC license notices when redistributing their source code.
+No claims of production-grade security, cryptographic certification, or measured performance improvement should be made without corresponding implementation and validation evidence.
+
+## 11. Future Enhancements
+
+- Complete and document the processor firmware.
+- Verify encryption and decryption against independent AES-128 test vectors.
+- Automate simulation and regression testing.
+- Complete FPGA synthesis, implementation, and timing analysis.
+- Validate the accelerator on the target development board.
+- Measure latency, resource utilization, and throughput.
+- Add authenticated communication support and improve key-management practices.
+
+## 12. Getting Started
+
+The following steps describe the intended workflow. Exact commands depend on the finalized source files, tool versions, and firmware build process.
+
+1. Clone the repository.
+2. Open the project in AMD Vivado Design Suite.
+3. Add the RTL source files and the verified board constraints.
+4. Configure the FPGA part and synthesis/implementation settings.
+5. Run elaboration, synthesis, implementation, and timing checks.
+6. Generate and program the FPGA bitstream after resolving build errors.
+7. Build and load the processor firmware using the project's documented boot and loading procedure.
+8. Run the documented simulation or hardware test cases.
+
+```bash
+git clone https://github.com/Elamathi-789/picorv32-aes128-accelerator.git
+cd picorv32-aes128-accelerator
+```
+
+**Important:** The exact firmware boot source, memory layout, programming procedure, and required Vivado project setup must be documented once verified. The FPGA bitstream configuration process and the loading of software executed by the PicoRV32 processor are separate steps.
+
+## 13. Author and Project Information
+
+**Project:** PicoRV32-Based AES-128 Hardware Accelerator for Secure Tactical Communication
+
+**Platform:** Real Digital Boolean Board — Spartan-7 XC7S50 FPGA
+
+**Repository:** [GitHub Project Repository](https://github.com/Elamathi-789/picorv32-aes128-accelerator)
+
+This project is developed for engineering and academic evaluation, focusing on embedded processor integration, cryptographic hardware acceleration, RTL design, and FPGA-based system implementation.
